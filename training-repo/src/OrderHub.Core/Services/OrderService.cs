@@ -102,14 +102,11 @@ public class OrderService : IOrderService
 
         order.Status = OrderStatus.Cancelled;
 
-        if (order.Status == OrderStatus.Pending || order.Status == OrderStatus.Confirmed)
+        foreach (var item in order.Items)
         {
-            foreach (var item in order.Items)
-            {
-                var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product is not null)
-                    product.StockQuantity += item.Quantity;
-            }
+            var product = await _productRepository.GetByIdAsync(item.ProductId);
+            if (product is not null)
+                product.StockQuantity += item.Quantity;
         }
 
         await _orderRepository.SaveChangesAsync();
