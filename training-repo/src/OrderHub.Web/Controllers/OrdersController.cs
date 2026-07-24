@@ -141,7 +141,7 @@ public class OrdersController : Controller
         {
             Id = order.Id,
             CustomerId = order.CustomerId,
-            CustomerName = order.Customer?.Name ?? "-",
+            CustomerName = order.Customer?.Name ?? "-".ToString(),
             CustomerEmail = order.Customer?.Email ?? "-",
             CustomerTier = tier,
             Status = order.Status,
