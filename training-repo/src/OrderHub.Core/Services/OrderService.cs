@@ -73,10 +73,6 @@ public class OrderService : IOrderService
             product.StockQuantity -= line.Quantity;
 
             var unitPrice = product.UnitPrice;
-            if (customer.Tier == CustomerTier.Gold)
-            {
-                unitPrice = Math.Round(unitPrice * (1 - GetDiscountRate(customer.Tier)), 2);
-            }
 
             order.Items.Add(new OrderItem
             {
