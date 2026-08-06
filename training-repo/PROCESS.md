@@ -92,3 +92,60 @@ console 輸出解析亂碼。
       —— **需要重啟 CLI 讀取新寫入的 `.mcp.json` 才能核對,尚未由使用者側確認**
 - [x] 對照實驗完成且記錄(見上)
 - [x] `.mcp.json` 進 git,獨立 commit
+
+---
+
+# 練習 4 — cancel_order:會改資料的工具
+
+## Annotations 驗證(MCP Inspector)
+
+在 Inspector 的 Tools 列表點開個別工具,標籤如下:
+
+| 工具 | 標註 | Inspector 顯示 |
+|---|---|---|
+| `get_order` | `ReadOnly = true` | `read-only` |
+| `low_stock` | `ReadOnly = true` | `read-only` |
+| `customer_orders` | `ReadOnly = true` | `read-only` |
+| `cancel_order` | `Destructive = true, Idempotent = false` | `destructive` |
+
+description 逐字相符,`cancel_order` 的 `id` 參數標記為必填(`id *`)。
+
+## 功能驗證
+
+1. **取消一筆待處理訂單(#208,SKU-1001 × 2,取消前庫存 11)**
+   - 呼叫 `cancel_order(id=208)` → `訂單 208 已取消,庫存已回補`
+   - 回 `/Products` 頁面核對:SKU-1001 現有庫存從 11 變成 **13**,回補正確
+     (對應活動 1 客訴 3 修的那條 `CancelOrderAsync` 回補邏輯)
+
+2. **負面案例 —— 清楚拒絕,不是 exception dump**
+   - 對同一筆(已取消)訂單 208 再取消一次 →
+     `取消失敗:狀態為 Cancelled 的訂單不可取消`
+   - 對一筆已出貨訂單(#194)取消 →
+     `取消失敗:狀態為 Shipped 的訂單不可取消`
+   - 兩次呼叫在 server log 裡都是 `IsError = False`(工具本身執行成功,
+     只是回傳「業務規則不允許」的訊息),完全沒有 stack trace——這是
+     `OrderService.CancelOrderAsync` 本來就用 `ServiceResult<T>.Fail(...)`
+     表達預期內失敗、工具只轉接訊息的結果。
+
+## 權限確認提示 —— 未能在本 session 驗證,需使用者親自操作
+
+`Destructive` annotation 是給 **client** 的提示,決定是否在執行前跳出人工
+確認,MCP Inspector 本身沒有這層(它是開發用的直接執行工具,按
+Execute 就真的送出去了),所以「按允許之前資料不會被動到」這件事沒辦法
+用 Inspector 驗證,只能在真正把 `orderhub` 接進 Claude Code / Codex
+的對話裡看到。
+
+而這個 session 的 `.mcp.json` 是稍早才寫入的,MCP server 清單是 CLI
+**啟動時**載入、不會中途熱重載,所以我自己這個 session 也連不上
+`orderhub`——這一項需要你重啟 CLI 後,親口對 agent 說「幫我取消訂單 X」,
+觀察是否跳出權限確認、按允許前資料是否真的沒被動到。
+
+## 驗證清單狀態
+
+- [x] Inspector 中 annotations 如預期(`cancel_order` = destructive,
+      三個唯讀工具 = read-only)
+- [ ] 對 agent 說「幫我取消訂單 X」,觀察權限確認提示
+      —— **需重啟 CLI 讓 `.mcp.json` 生效,待使用者親自驗證**
+- [x] 取消一筆待處理訂單成功,`/Products` 庫存回補(11 → 13)
+- [x] 重複取消 / 取消已出貨訂單,得到清楚拒絕訊息而非 exception dump
+- [x] 獨立 commit;本節記錄對照過程
