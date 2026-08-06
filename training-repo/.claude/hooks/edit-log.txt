@@ -15,3 +15,5 @@
 2026-07-24 16:11:27  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Web\Controllers\ProductsController.cs
 2026-07-24 16:11:44  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Web\Views\Shared\_Layout.cshtml
 2026-07-24 16:12:04  Write  C:\Users\dm66\source\repos\66-training\training-repo\tests\OrderHub.Tests\ProductServiceLowStockTests.cs
+2026-08-06 17:02:22  Write  C:\Users\dm66\.codex\config.toml
+2026-08-06 17:13:21  Write  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\Program.cs
