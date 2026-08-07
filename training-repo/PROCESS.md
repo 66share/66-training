@@ -211,3 +211,66 @@ Inspector 的 Prompts 頁籤核對過:填 `threshold=5` 按 Get Prompt,
 - [x] stdio 煙霧測試(`resources/list`、`resources/read`、`prompts/list`、
       `prompts/get`)全部無誤,capabilities 正確宣告
 - [x] 獨立 commit;本節記錄
+
+---
+
+# 5c. 體會三者的分工
+
+## 實測情況
+
+`@` 選 resource 問折扣問題、`/mcp__orderhub__low_stock_report` 一鍵展開再
+自動呼叫 `low_stock`——這兩項是 Claude Code / Codex 這個 **CLI 本身**的
+介面行為(resource picker、prompt→slash command),不是 Inspector 能測的
+東西。而這個 session 的 `.mcp.json` 是練習 3 才寫入的,MCP server 清單
+只在 CLI **啟動時**讀取,所以我這個 session 目前還是連不上 `orderhub`
+(用 ToolSearch 找過,沒有任何 orderhub 工具/資源/提示可用)。這兩項
+**需要你重啟 CLI 後親自驗證**——其餘(Inspector 讀 resource/prompt)
+已經在 5a、5b 做過,結果同樣適用於這裡。
+
+## 思考:折扣規則用 Resource,和讓 agent 自己讀 `OrderService.cs`,差在哪?
+
+- **團隊共用一份答案**:Resource 是 server 端維護的單一文本,所有連上
+  `orderhub` 的人(不管用 Claude Code 還是 Codex)問折扣問題時看到的
+  都是同一份;讓 agent 自己去讀程式碼,則是每個人、每次都各自「重新
+  發現」規則一遍,容易漏看細節——像 `CreateOrderAsync` 目前只在 Gold
+  才套用折扣去 snapshot 單價,但 `CalculateTotal` 是全部 tier 都套用
+  折扣率計算總額,這個不對稱如果沒讀完整段程式碼很容易漏掉,Resource
+  可以把「這裡有個不對稱,兩處算法不同」這種眉角直接寫清楚。
+- **省探索成本**:讀 Resource 是一次 O(1) 的查詢;讀程式碼要先找到
+  `OrderService.cs`、認出 `GetDiscountRate`/`CalculateSubtotal`/
+  `CalculateTotal` 三個方法怎麼互相呼叫,才能拼出完整規則,對 agent
+  來說是多好幾步的探索,對人來說也是多讀一次程式碼的成本。
+- **但 Resource 本身也會過期**:目前 `DiscountRules()` 是寫死的
+  markdown 字串,如果哪天 `OrderService.GetDiscountRate` 改了折扣
+  (例如 Silver 從 95 折改 92 折),沒人記得同步更新這段 resource,
+  agent 讀到的就是舊規則——而且因為看起來像「官方文件」,答錯的時候
+  還更有底氣。跟練習 1「金額別自己算,重用 `OrderService`」是同一堂課:
+  真的要避免兩份真相,`DiscountRules()` 應該直接呼叫
+  `orderService.GetDiscountRate(tier)` 動態組出文字,而不是手寫死
+  百分比。
+
+## 思考:Prompt 範本放 server,和每個人自己打一段話,差在哪?
+
+- **團隊共用最佳問法**:`low_stock_report` 這段話已經包含「用哪個
+  工具查、再用其他工具查什麼、輸出要有哪些欄位」——這是問了很多次
+  之後才會慢慢寫順的問法。放進 server,新加入的人第一次用就拿到
+  同一份熟練問法,不用自己摸索「原來要先查庫存、再查訂單、最後才能
+  給補貨建議」這個順序。
+- **版本控制**:Prompt 範本是 `OrderHubPrompts.cs` 裡的程式碼,進 git、
+  走 code review,改版有紀錄可查;每個人自己在對話框手打的問法則完全
+  沒有版本痕跡,沒辦法追蹤「這句話是什麼時候、為什麼這樣問」。
+- **改版只要改一個地方**:如果之後這份採購建議報告要多考慮「供應商
+  前置期」,只要改 `LowStockReport()` 這一個方法,所有人下次執行
+  `/mcp__orderhub__low_stock_report` 就自動套用新版;如果是每個人各自
+  手打一段話,要嘛沒人想到要加這個條件,要嘛加了也只有那個人自己知道,
+  團隊裡會同時流通好幾種問法、好幾種答案品質。
+
+## 驗證清單狀態
+
+- [ ] Claude Code `@` 選 `orderhub://discount-rules` 問「Gold 會員買
+      1000 元商品應付多少?」,agent 用 resource 內容作答
+      —— **需重啟 CLI,待使用者親自驗證**
+- [ ] Claude Code `/mcp__orderhub__low_stock_report` 一鍵展開並自動
+      呼叫 `low_stock` 完成報告 —— **需重啟 CLI,待使用者親自驗證**
+- [x] Inspector 驗證 resource/prompt(見 5a、5b,同一支 server 結果適用)
+- [x] 5c 第 3 點思考記進 PROCESS.md(見上);獨立 commit
