@@ -22,3 +22,6 @@
 2026-08-06 17:28:24  Write  C:\Users\dm66\source\repos\66-training\training-repo\.mcp.json
 2026-08-06 17:33:52  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\OrderHubTools.cs
 2026-08-06 17:33:58  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\OrderHubTools.cs
+2026-08-07 08:30:39  Write  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\OrderHubResources.cs
+2026-08-07 08:30:44  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\Program.cs
+2026-08-07 08:36:50  Edit  C:\Users\dm66\source\repos\66-training\training-repo\src\OrderHub.Mcp\Program.cs
