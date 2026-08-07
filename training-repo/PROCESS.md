@@ -149,3 +149,65 @@ Execute 就真的送出去了),所以「按允許之前資料不會被動到」�
 - [x] 取消一筆待處理訂單成功,`/Products` 庫存回補(11 → 13)
 - [x] 重複取消 / 取消已出貨訂單,得到清楚拒絕訊息而非 exception dump
 - [x] 獨立 commit;本節記錄對照過程
+
+---
+
+# 練習 5 — Resource 與 Prompt:MCP 不是只有 Tool
+
+## 5a. Resource — `orderhub://discount-rules`
+
+新增 `OrderHubResources.cs`,在 `Program.cs` 接上 `.WithResources<OrderHubResources>()`。
+跟 Tool 的關鍵差異:**沒有參數、不查 DB**,單純是一段固定的背景知識
+(會員折扣規則),由 client 自己決定何時要不要把它塞進 context——
+不像 Tool 是「agent 主動觸發的動作」。
+
+stdio 煙霧測試:
+
+```
+capabilities 多了 "resources": { "listChanged": true }
+resources/list  → 1 筆:會員折扣規則 / orderhub://discount-rules / text/markdown
+resources/read  → markdown 內容與程式碼裡的字串逐字相符
+```
+
+Inspector 的 Resources 頁籤也核對過:URIs (1) 底下看得到「會員折扣規則」,
+點開後 markdown 正確渲染成標題+清單,不是原始跳脫字元。
+
+## 5b. Prompt — `low_stock_report`
+
+新增 `OrderHubPrompts.cs`,回傳 `ChatMessage`(來自 `Microsoft.Extensions.AI`,
+這包是 `ModelContextProtocol` 的既有 transitive 依賴,不用額外加
+`PackageReference` 就能編譯),`Program.cs` 接上 `.WithPrompts<OrderHubPrompts>()`。
+
+跟 Tool / Resource 的差異:Prompt 是**預先寫好的一段話範本**,像
+slash command 一樣一鍵取用,取代「採購同事每週手動打一次同樣的問題」;
+產生的訊息裡會指示 agent 去呼叫 `low_stock` 等既有工具,而不是自己把
+資料庫查詢邏輯再寫一次到 prompt 裡——分工上,Prompt 負責「起頭問對問題」,
+真正查資料還是靠 Tool。
+
+stdio 煙霧測試(`threshold=5`):
+
+```
+capabilities 多了 "prompts": { "listChanged": true }
+prompts/list → low_stock_report,參數 threshold(optional,預設 10 寫在說明裡)
+prompts/get(threshold=5) → role: user,內文正確帶入「threshold=5」
+```
+
+Inspector 的 Prompts 頁籤核對過:填 `threshold=5` 按 Get Prompt,
+`[0] role: user` 訊息與帶入值都正確。
+
+## 三種原語的分工小結
+
+| | Tool | Resource | Prompt |
+|---|---|---|---|
+| 誰觸發 | agent 主動呼叫 | client 決定何時放進 context | 使用者/agent 一鍵取用範本 |
+| 有沒有參數/動作 | 有,會執行查詢或修改 | 沒有參數,純資料 | 有參數,但只是套模板產生文字 |
+| OrderHub 範例 | `get_order`/`low_stock`/`cancel_order` | `orderhub://discount-rules` | `low_stock_report` |
+| 好比 | API 呼叫 | 唯讀的說明文件/知識庫 | slash command / 範本訊息 |
+
+## 驗證清單狀態
+
+- [x] Resource 在 Inspector 列出,內容正確渲染(markdown)
+- [x] Prompt 在 Inspector 列出,帶參數取得訊息正確
+- [x] stdio 煙霧測試(`resources/list`、`resources/read`、`prompts/list`、
+      `prompts/get`)全部無誤,capabilities 正確宣告
+- [x] 獨立 commit;本節記錄
